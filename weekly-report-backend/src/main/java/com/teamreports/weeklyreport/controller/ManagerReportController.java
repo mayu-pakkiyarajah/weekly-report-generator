@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Manager-only: view any team member's reports and drive the review/correction workflow. */
 @RestController
 @RequestMapping("/api/manager/reports")
 @RequiredArgsConstructor

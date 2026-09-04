@@ -3,7 +3,6 @@ package com.teamreports.weeklyreport.security;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-/** Small helper so services don't repeat SecurityContextHolder boilerplate. */
 @Component
 public class CurrentUserProvider {
 

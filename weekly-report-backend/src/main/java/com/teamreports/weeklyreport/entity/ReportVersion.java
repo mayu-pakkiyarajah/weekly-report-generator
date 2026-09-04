@@ -11,13 +11,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * An immutable-once-submitted snapshot of report content.
- * version 1 is created when the report is first saved as a draft.
- * Every time a report moves NEEDS_CORRECTION -> edited -> resubmitted,
- * a NEW ReportVersion row is created (never overwriting the previous one),
- * which is what gives managers visible version history.
- */
 @Entity
 @Table(name = "report_versions",
         uniqueConstraints = @UniqueConstraint(columnNames = {"report_id", "version_number"}))

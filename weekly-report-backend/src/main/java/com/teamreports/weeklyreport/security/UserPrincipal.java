@@ -9,10 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * Spring Security identity wrapper around our User entity.
- * Roles are exposed with the "ROLE_" prefix as required by hasRole()/@PreAuthorize("hasRole(...)").
- */
 public record UserPrincipal(Long id, String email, String passwordHash, Role role, boolean active)
         implements UserDetails {
 

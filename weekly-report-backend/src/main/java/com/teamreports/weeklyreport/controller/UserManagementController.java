@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-/** Admin/manager-only: invite team members, assign roles, activate/deactivate accounts. */
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor

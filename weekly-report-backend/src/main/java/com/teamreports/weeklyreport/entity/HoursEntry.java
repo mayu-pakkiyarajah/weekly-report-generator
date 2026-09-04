@@ -8,7 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Optional breakdown of hours worked by task type (Development, Testing, Meetings, ...). */
 @Entity
 @Table(name = "hours_entries",
         uniqueConstraints = @UniqueConstraint(columnNames = {"report_version_id", "task_type"}))

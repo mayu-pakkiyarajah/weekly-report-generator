@@ -12,12 +12,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * A single week's report for a single user.
- * The mutable content of the report lives in {@link ReportVersion} rows so that
- * every correction cycle preserves the previous content instead of overwriting it.
- * This row only tracks identity (who / which week / which project) and current status.
- */
 @Entity
 @Table(name = "reports",
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "week_start_date"}))

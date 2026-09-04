@@ -4,7 +4,6 @@ import com.teamreports.weeklyreport.entity.enums.ReportStatus;
 
 import java.time.LocalDate;
 
-/** Lightweight row used in list/history/dashboard views. */
 public record ReportSummaryResponse(
         Long id,
         Long userId,

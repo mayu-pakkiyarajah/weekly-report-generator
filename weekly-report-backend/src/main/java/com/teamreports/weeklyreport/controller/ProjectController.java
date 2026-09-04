@@ -20,7 +20,6 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
-    /** Any authenticated user can see active projects (needed to tag their own reports). */
     @GetMapping
     public Page<ProjectResponse> listActiveProjects(Pageable pageable) {
         return projectService.listActiveProjects(pageable);

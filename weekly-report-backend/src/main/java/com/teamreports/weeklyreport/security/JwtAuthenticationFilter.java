@@ -53,8 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (JwtException | IllegalArgumentException ex) {
-            // Invalid/expired token: leave the security context empty so the request
-            // falls through to normal 401/403 handling instead of throwing here.
             SecurityContextHolder.clearContext();
         }
 

@@ -7,10 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Optional many-to-many link between a team member and the projects
- * they are assigned to. Used to scope "assign team members to projects".
- */
 @Entity
 @Table(name = "project_assignments",
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "project_id"}))

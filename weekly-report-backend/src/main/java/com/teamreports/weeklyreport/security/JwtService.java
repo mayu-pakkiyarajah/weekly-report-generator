@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
-/** Issues and validates HS256 JWT access tokens carrying the user's id, email and role. */
 @Service
 @RequiredArgsConstructor
 public class JwtService {

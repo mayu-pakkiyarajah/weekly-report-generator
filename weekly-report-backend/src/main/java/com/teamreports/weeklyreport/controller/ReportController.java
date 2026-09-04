@@ -11,11 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Team-member-facing report endpoints. Every method resolves the acting user from the
- * authenticated JWT (never from a client-supplied id), so a team member can never read
- * or write another team member's report through this controller.
- */
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor

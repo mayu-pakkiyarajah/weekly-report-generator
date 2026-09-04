@@ -16,12 +16,6 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
-/**
- * Populates a realistic demo dataset (5 team members, 1 manager, 3 projects, several weeks
- * of reports across every status) so the dashboard and review workflow are meaningful to
- * evaluate out of the box. Only runs when app.seed.enabled=true AND the users table is empty,
- * so it never silently re-seeds or duplicates data in a real environment.
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -66,7 +60,6 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         LocalDate currentWeekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
-        // Go back 4 full weeks plus the current (in-progress) week.
         for (int weeksAgo = 4; weeksAgo >= 0; weeksAgo--) {
             LocalDate weekStart = currentWeekStart.minusWeeks(weeksAgo);
             LocalDate weekEnd = weekStart.plusDays(6);
@@ -75,10 +68,9 @@ public class DemoDataSeeder implements CommandLineRunner {
                 User member = members.get(i);
                 Project project = projects.get(i % projects.size());
 
-                // Vary status by member/week so every status is represented on the dashboard.
                 ReportStatus targetStatus = pickStatus(weeksAgo, i);
                 if (targetStatus == null) {
-                    continue; // simulates "not yet started" for this member/week
+                    continue;
                 }
 
                 seedReport(member, manager, project, weekStart, weekEnd, targetStatus, i);
@@ -91,11 +83,10 @@ public class DemoDataSeeder implements CommandLineRunner {
 
     private ReportStatus pickStatus(int weeksAgo, int memberIndex) {
         if (weeksAgo == 0) {
-            // Current week: mix of not-started, draft and submitted - a realistic in-flight week.
             return switch (memberIndex % 5) {
                 case 0 -> ReportStatus.SUBMITTED;
                 case 1 -> ReportStatus.DRAFT;
-                case 2 -> null; // not started
+                case 2 -> null;
                 case 3 -> ReportStatus.SUBMITTED;
                 default -> ReportStatus.DRAFT;
             };
@@ -109,7 +100,6 @@ public class DemoDataSeeder implements CommandLineRunner {
                 default -> ReportStatus.APPROVED;
             };
         }
-        // Older weeks: mostly approved, as a completed history.
         return ReportStatus.APPROVED;
     }
 
@@ -124,15 +114,12 @@ public class DemoDataSeeder implements CommandLineRunner {
                 .status(ReportStatus.DRAFT)
                 .build();
 
-        // 1. Create and SAVE the Report first
         Report savedReport = reportRepository.save(report);
 
-        // 2. Create ReportVersion v1
         ReportVersion v1 = buildVersion(savedReport, 1, seedVariant, false);
         savedReport.getVersions().add(v1);
         savedReport.setCurrentVersion(v1);
 
-        // 3. SAVE the ReportVersion BEFORE using it in ReviewComments
         ReportVersion savedV1 = reportVersionRepository.save(v1);
         reportRepository.save(savedReport);
 
@@ -140,7 +127,6 @@ public class DemoDataSeeder implements CommandLineRunner {
             return;
         }
 
-        // 4. Submit version 1
         savedV1.setSubmittedAt(weekEnd.atTime(16, 0).toInstant(java.time.ZoneOffset.UTC));
         savedReport.setStatus(ReportStatus.SUBMITTED);
         reportRepository.save(savedReport);
@@ -150,10 +136,10 @@ public class DemoDataSeeder implements CommandLineRunner {
         }
 
         if (targetStatus == ReportStatus.NEEDS_CORRECTION) {
-            // 5. Now we can safely create ReviewComment with savedV1
+
             reviewCommentRepository.save(ReviewComment.builder()
                     .report(savedReport)
-                    .reportVersion(savedV1)  // ✅ Now it's persisted!
+                    .reportVersion(savedV1)
                     .reviewer(manager)
                     .action(ReviewAction.CHANGES_REQUESTED)
                     .comment("Please add more detail on the blocker for the payment integration task, "
@@ -164,41 +150,36 @@ public class DemoDataSeeder implements CommandLineRunner {
             return;
         }
 
-        // APPROVED: for variety, make some approved reports go through one correction cycle first
         if (seedVariant % 2 == 0) {
-            // 6. Create ReviewComment with savedV1
+
             reviewCommentRepository.save(ReviewComment.builder()
                     .report(savedReport)
-                    .reportVersion(savedV1)  // ✅ Saved!
+                    .reportVersion(savedV1)
                     .reviewer(manager)
                     .action(ReviewAction.CHANGES_REQUESTED)
                     .comment("Good progress, but please clarify the achievement description before we sign off.")
                     .build());
 
-            // 7. Create Version 2
             ReportVersion v2 = buildVersion(savedReport, 2, seedVariant, true);
             savedReport.getVersions().add(v2);
             savedReport.setCurrentVersion(v2);
 
-            // 8. SAVE Version 2
             ReportVersion savedV2 = reportVersionRepository.save(v2);
             savedV2.setSubmittedAt(weekEnd.atTime(17, 30).toInstant(java.time.ZoneOffset.UTC));
             savedReport.setStatus(ReportStatus.SUBMITTED);
             reportRepository.save(savedReport);
 
-            // 9. ReviewComment for Version 2 - now with savedV2
             reviewCommentRepository.save(ReviewComment.builder()
                     .report(savedReport)
-                    .reportVersion(savedV2)  // ✅ Saved!
+                    .reportVersion(savedV2)
                     .reviewer(manager)
                     .action(ReviewAction.APPROVED)
                     .comment("Looks good now, approved.")
                     .build());
         } else {
-            // 10. ReviewComment with savedV1
             reviewCommentRepository.save(ReviewComment.builder()
                     .report(savedReport)
-                    .reportVersion(savedV1)  // ✅ Saved!
+                    .reportVersion(savedV1)
                     .reviewer(manager)
                     .action(ReviewAction.APPROVED)
                     .comment("Solid week, approved.")

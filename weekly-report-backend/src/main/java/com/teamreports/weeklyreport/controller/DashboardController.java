@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Manager-only dashboard metrics and chart data. All week parameters expect the Monday of that week. */
 @RestController
 @RequestMapping("/api/manager/dashboard")
 @RequiredArgsConstructor

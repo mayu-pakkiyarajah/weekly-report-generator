@@ -8,11 +8,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * One review action taken by a manager against a specific report version.
- * Keeping the full history (rather than a single "latest comment" field)
- * lets managers see, per past version, exactly what was said about it.
- */
 @Entity
 @Table(name = "review_comments")
 @Getter

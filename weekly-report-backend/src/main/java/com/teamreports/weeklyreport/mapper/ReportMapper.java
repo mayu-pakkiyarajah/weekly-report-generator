@@ -7,11 +7,6 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Hand-written mapper (rather than MapStruct) for the report aggregate:
- * the nested version/task/blocker/achievement/hours structure benefits from
- * explicit, readable control over ordering and null-safety.
- */
 @Component
 public class ReportMapper {
 

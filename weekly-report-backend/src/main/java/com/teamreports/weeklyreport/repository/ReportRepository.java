@@ -18,10 +18,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Page<Report> findByUserId(Long userId, Pageable pageable);
 
-    /**
-     * Manager-facing search across the whole team with optional filters.
-     * Any filter left null is ignored.
-     */
     @Query("""
             select r from Report r
             where (:userId is null or r.user.id = :userId)
