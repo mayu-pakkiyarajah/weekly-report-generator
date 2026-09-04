@@ -1,0 +1,38 @@
+<div class="page-header">
+  <div>
+    <h1>My weekly reports</h1>
+    <p class="subtitle">Your report history, organized by week.</p>
+  </div>
+  <a routerLink="/reports/new" class="btn btn-primary">New report</a>
+</div>
+
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<ng-container *ngIf="!loading()">
+  <div class="empty-state" *ngIf="reports().length === 0">
+    You haven't started any reports yet. Create your first weekly report to get going.
+  </div>
+
+  <table class="ledger-table" *ngIf="reports().length > 0">
+    <thead>
+      <tr>
+        <th>Week</th>
+        <th>Project</th>
+        <th>Status</th>
+        <th>Versions</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of reports()">
+        <td>{{ r.weekStartDate }} – {{ r.weekEndDate }}</td>
+        <td>{{ r.projectName }}</td>
+        <td><app-status-badge [status]="r.status"></app-status-badge></td>
+        <td>{{ r.versionCount }}</td>
+        <td><a [routerLink]="editableTarget(r)">{{ r.status === 'DRAFT' || r.status === 'NEEDS_CORRECTION' ? 'Continue' : 'View' }}</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <app-pagination [page]="page()" [totalPages]="totalPages()" (pageChange)="onPageChange($event)"></app-pagination>
+</ng-container>

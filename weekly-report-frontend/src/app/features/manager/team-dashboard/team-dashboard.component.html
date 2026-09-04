@@ -1,0 +1,91 @@
+<div class="page-header">
+  <div>
+    <h1>Team dashboard</h1>
+    <p class="subtitle">Submission compliance, workload and activity for the selected week.</p>
+  </div>
+  <div class="row">
+    <button class="btn btn-text" (click)="shiftWeek(-7)">&larr; Previous week</button>
+    <input type="date" class="input" style="width: auto;" [value]="weekStart()"
+           (change)="onWeekChange($any($event.target).value)" />
+    <button class="btn btn-text" (click)="shiftWeek(7)">Next week &rarr;</button>
+  </div>
+</div>
+
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<div class="stack" *ngIf="!loading() && summary() as s">
+
+  <!-- Summary metrics -->
+  <div class="grid-4">
+    <div class="card metric-card" style="border-left: 3px solid var(--color-status-submitted);">
+      <div class="hint">Submitted this week</div>
+      <div class="metric-value">{{ s.totalReportsSubmitted }} / {{ s.expectedReports }}</div>
+      <div class="hint">{{ s.complianceRatePercent }}% compliance</div>
+    </div>
+    <div class="card metric-card" style="border-left: 3px solid var(--color-status-draft);">
+      <div class="hint">Pending</div>
+      <div class="metric-value">{{ s.pendingCount }}</div>
+      <div class="hint">not yet submitted</div>
+    </div>
+    <div class="card metric-card" style="border-left: 3px solid var(--color-status-correction);">
+      <div class="hint">Needs correction</div>
+      <div class="metric-value">{{ s.needsCorrectionCount }}</div>
+      <div class="hint">{{ s.lateCount }} overdue</div>
+    </div>
+    <div class="card metric-card" style="border-left: 3px solid var(--color-danger);">
+      <div class="hint">Open blockers</div>
+      <div class="metric-value">{{ s.openBlockersCount }}</div>
+      <div class="hint">across the team</div>
+    </div>
+  </div>
+
+  <!-- Status by member -->
+  <section class="card">
+    <h2>Submission status by team member</h2>
+    <table class="ledger-table">
+      <thead><tr><th>Team member</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let m of statusByMember()">
+          <td><a [routerLink]="['/manager/members', m.userId]">{{ m.userFullName }}</a></td>
+          <td><app-status-badge [status]="m.status"></app-status-badge></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Charts -->
+  <div class="grid-2">
+    <section class="card">
+      <h2>Workload by project</h2>
+      <p class="hint">Hours logged this week</p>
+      <app-chart type="bar" [labels]="workloadLabels()" [datasets]="workloadHoursDataset()"></app-chart>
+    </section>
+
+    <section class="card">
+      <h2>Time by task type</h2>
+      <p class="hint">Team-wide, this week</p>
+      <app-chart type="doughnut" [labels]="timeByTypeLabels()" [datasets]="timeByTypeDataset()"></app-chart>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Tasks completed trend</h2>
+    <p class="hint">Last 8 weeks, team-wide</p>
+    <app-chart type="line" [labels]="trendLabels()" [datasets]="trendDataset()"></app-chart>
+  </section>
+
+  <!-- Activity feed -->
+  <section class="card">
+    <h2>Recent activity</h2>
+    <div class="empty-state" *ngIf="activityFeed().length === 0">No review activity yet.</div>
+    <div class="stack" *ngIf="activityFeed().length > 0">
+      <div *ngFor="let a of activityFeed()" class="row" style="justify-content: space-between; align-items: flex-start;">
+        <div>
+          <a [routerLink]="['/manager/reports', a.reportId]">{{ a.userFullName }}</a>
+          <p class="hint" style="margin-top: 2px;">{{ a.description }}</p>
+        </div>
+        <span class="hint">{{ a.timestamp | date:'short' }}</span>
+      </div>
+    </div>
+  </section>
+</div>

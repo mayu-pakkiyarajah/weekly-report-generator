@@ -1,0 +1,31 @@
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">WR</span>
+      <span class="brand-name">Weekly Reports</span>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">My work</div>
+      <a routerLink="/reports" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Report history</a>
+      <a routerLink="/reports/new" routerLinkActive="active">New report</a>
+
+      <ng-container *ngIf="auth.isManager()">
+        <div class="nav-section">Team</div>
+        <a routerLink="/manager/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/manager/reports" routerLinkActive="active">All reports</a>
+        <a routerLink="/manager/projects" routerLinkActive="active">Projects</a>
+        <a routerLink="/manager/users" routerLinkActive="active">Team members</a>
+      </ng-container>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-name">{{ auth.currentUserName() }}</div>
+      <button class="btn btn-text" (click)="logout()">Log out</button>
+    </div>
+  </aside>
+
+  <main class="content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

@@ -1,0 +1,208 @@
+<div *ngIf="loading()"><app-spinner></app-spinner></div>
+
+<ng-container *ngIf="!loading()">
+
+  <!-- ===================== CREATE MODE ===================== -->
+  <div *ngIf="mode === 'create'">
+    <div class="page-header">
+      <div>
+        <h1>New weekly report</h1>
+        <p class="subtitle">Pick the week and project this report is for. You'll fill in the details next.</p>
+      </div>
+    </div>
+
+    <form [formGroup]="createForm" (ngSubmit)="createDraft()" class="card" style="max-width: 480px;">
+      <div class="field">
+        <label for="weekStartDate">Week starting (Monday)</label>
+        <input id="weekStartDate" type="date" class="input" formControlName="weekStartDate" />
+      </div>
+
+      <div class="field">
+        <label for="projectId">Project / category</label>
+        <select id="projectId" class="input" formControlName="projectId">
+          <option [ngValue]="null" disabled>Select a project</option>
+          <option *ngFor="let p of projects()" [ngValue]="p.id">{{ p.name }}</option>
+        </select>
+        <span class="error" *ngIf="createForm.controls['projectId'].touched && createForm.controls['projectId'].invalid">
+          Select a project for this report.
+        </span>
+      </div>
+
+      <p class="error" *ngIf="submitError()">{{ submitError() }}</p>
+
+      <div class="row">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">
+          {{ saving() ? 'Creating…' : 'Start report' }}
+        </button>
+        <a routerLink="/reports" class="btn btn-text">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===================== EDIT MODE ===================== -->
+  <div *ngIf="mode === 'edit' && report() as r">
+    <div class="page-header">
+      <div>
+        <h1>Week of {{ r.weekStartDate }}</h1>
+        <p class="subtitle">{{ r.projectName }}</p>
+      </div>
+      <app-status-badge [status]="r.status"></app-status-badge>
+    </div>
+
+    <div class="card" style="background: var(--color-status-correction-soft); border-color: var(--color-status-correction); margin-bottom: 20px;"
+         *ngIf="latestCorrectionComment() as comment">
+      <strong style="color: var(--color-status-correction);">Manager requested changes</strong>
+      <p style="margin-top: 6px;">{{ comment }}</p>
+    </div>
+
+    <form [formGroup]="contentForm" class="stack">
+
+      <!-- Tasks completed -->
+      <section class="card">
+        <div class="row" style="justify-content: space-between;">
+          <h2>Tasks completed</h2>
+          <button type="button" class="btn btn-text" (click)="addTask()">+ Add task</button>
+        </div>
+
+        <div class="empty-state" *ngIf="tasksCompleted.length === 0">No tasks added yet.</div>
+
+        <div formArrayName="tasksCompleted" class="stack" *ngIf="tasksCompleted.length > 0">
+          <div *ngFor="let task of tasksCompleted.controls; let i = index" [formGroupName]="i" class="task-row">
+            <div class="grid-2">
+              <div class="field">
+                <label>Task name</label>
+                <input class="input" formControlName="taskName" />
+              </div>
+              <div class="field">
+                <label>Output / deliverable</label>
+                <input class="input" formControlName="outputDeliverable" />
+              </div>
+            </div>
+            <div class="grid-4">
+              <div class="field">
+                <label>Priority</label>
+                <select class="input" formControlName="priority">
+                  <option *ngFor="let p of priorities" [value]="p">{{ p }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Status</label>
+                <select class="input" formControlName="status">
+                  <option *ngFor="let s of taskStatuses" [value]="s">{{ s.replace('_', ' ') }}</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Planned %</label>
+                <input class="input" type="number" min="0" max="100" formControlName="plannedPercent" />
+              </div>
+              <div class="field">
+                <label>Actual %</label>
+                <input class="input" type="number" min="0" max="100" formControlName="actualPercent" />
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label>Time planned (hrs)</label>
+                <input class="input" type="number" min="0" step="0.5" formControlName="timePlannedHours" />
+              </div>
+              <div class="field">
+                <label>Time spent (hrs)</label>
+                <input class="input" type="number" min="0" step="0.5" formControlName="timeSpentHours" />
+              </div>
+            </div>
+            <button type="button" class="btn btn-text" (click)="removeTask(i)">Remove task</button>
+            <hr *ngIf="i < tasksCompleted.length - 1" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Tasks planned next week -->
+      <section class="card">
+        <h2>Tasks planned for next week</h2>
+        <div class="field" style="margin-top: 12px;">
+          <textarea class="input" rows="4" formControlName="tasksPlannedNextWeek"
+                    placeholder="What you plan to focus on next week..."></textarea>
+        </div>
+      </section>
+
+      <!-- Blockers -->
+      <section class="card">
+        <div class="row" style="justify-content: space-between;">
+          <h2>Blockers / challenges</h2>
+          <button type="button" class="btn btn-text" (click)="addBlocker()">+ Add blocker</button>
+        </div>
+
+        <div class="empty-state" *ngIf="blockers.length === 0">No blockers reported.</div>
+
+        <div formArrayName="blockers" class="stack" *ngIf="blockers.length > 0">
+          <div *ngFor="let b of blockers.controls; let i = index" [formGroupName]="i" class="row" style="align-items: flex-start;">
+            <input class="input" formControlName="description" placeholder="Describe the blocker" />
+            <label class="row" style="white-space: nowrap; font-size: 13px;">
+              <input type="radio" name="keyBlocker" [checked]="b.get('keyIssue')?.value" (change)="setKeyBlocker(i)" />
+              Key issue
+            </label>
+            <button type="button" class="btn btn-text" (click)="removeBlocker(i)">Remove</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Achievements -->
+      <section class="card">
+        <div class="row" style="justify-content: space-between;">
+          <h2>Achievements / highlights</h2>
+          <button type="button" class="btn btn-text" (click)="addAchievement()">+ Add achievement</button>
+        </div>
+
+        <div class="empty-state" *ngIf="achievements.length === 0">No achievements added yet.</div>
+
+        <div formArrayName="achievements" class="stack" *ngIf="achievements.length > 0">
+          <div *ngFor="let a of achievements.controls; let i = index" [formGroupName]="i" class="row" style="align-items: flex-start;">
+            <input class="input" formControlName="description" placeholder="Describe the achievement" />
+            <label class="row" style="white-space: nowrap; font-size: 13px;">
+              <input type="radio" name="keyAchievement" [checked]="a.get('keyAchievement')?.value" (change)="setKeyAchievement(i)" />
+              Key achievement
+            </label>
+            <button type="button" class="btn btn-text" (click)="removeAchievement(i)">Remove</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hours by task type (optional) -->
+      <section class="card">
+        <h2>Hours worked by task type <span class="hint">(optional)</span></h2>
+        <div formArrayName="hoursByTaskType" class="grid-4" style="margin-top: 12px;">
+          <div class="field" *ngFor="let h of hoursByTaskType.controls; let i = index" [formGroupName]="i">
+            <label>{{ h.get('taskType')?.value.replace('_', ' ') }}</label>
+            <input class="input" type="number" min="0" step="0.5" formControlName="hours" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Notes / links -->
+      <section class="card">
+        <h2>Notes &amp; links <span class="hint">(optional)</span></h2>
+        <div class="field" style="margin-top: 12px;">
+          <label>Notes</label>
+          <textarea class="input" rows="3" formControlName="notes"></textarea>
+        </div>
+        <div class="field">
+          <label>Links</label>
+          <input class="input" formControlName="links" placeholder="https://..." />
+        </div>
+      </section>
+
+      <p class="error" *ngIf="submitError()">{{ submitError() }}</p>
+      <p class="hint" *ngIf="saveConfirmation()">{{ saveConfirmation() }}</p>
+
+      <div class="row">
+        <button type="button" class="btn" [disabled]="saving()" (click)="saveDraft()">
+          {{ saving() ? 'Saving…' : 'Save draft' }}
+        </button>
+        <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="submitForReview()">
+          {{ saving() ? 'Submitting…' : 'Submit for review' }}
+        </button>
+        <a [routerLink]="['/reports', r.id]" class="btn btn-text">View read-only</a>
+      </div>
+    </form>
+  </div>
+</ng-container>

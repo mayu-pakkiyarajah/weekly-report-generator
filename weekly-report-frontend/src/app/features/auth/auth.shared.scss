@@ -1,0 +1,30 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: 20px;
+}
+.auth-card {
+  width: 400px;
+  max-width: 100%;
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+}
+.subtitle { color: var(--color-muted); margin-bottom: 20px; }
+.switch-link { margin-top: 16px; text-align: center; color: var(--color-muted); font-size: 13px; }

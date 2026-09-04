@@ -1,0 +1,86 @@
+<div class="page-header">
+  <div>
+    <h1>Projects &amp; categories</h1>
+    <p class="subtitle">Manage the projects team members can attach to their weekly reports.</p>
+  </div>
+  <button class="btn btn-primary" (click)="startAdd()" *ngIf="!showAddForm()">+ Add project</button>
+</div>
+
+<form [formGroup]="form" (ngSubmit)="save()" class="card" style="margin-bottom: 20px;" *ngIf="showAddForm()">
+  <h2>New project</h2>
+  <div class="grid-2" style="margin-top: 12px;">
+    <div class="field">
+      <label for="name">Name</label>
+      <input id="name" class="input" formControlName="name" />
+      <span class="error" *ngIf="form.controls.name.touched && form.controls.name.invalid">
+        A project name is required.
+      </span>
+    </div>
+    <div class="field">
+      <label for="description">Description</label>
+      <input id="description" class="input" formControlName="description" />
+    </div>
+  </div>
+  <p class="error" *ngIf="errorMessage()">{{ errorMessage() }}</p>
+  <div class="row">
+    <button type="submit" class="btn btn-primary" [disabled]="saving()">
+      {{ saving() ? 'Saving…' : 'Create project' }}
+    </button>
+    <button type="button" class="btn btn-text" (click)="cancelForm()">Cancel</button>
+  </div>
+</form>
+
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<section class="card" *ngIf="!loading()">
+  <div class="empty-state" *ngIf="projects().length === 0">No projects yet — add your first one above.</div>
+
+  <table class="ledger-table" *ngIf="projects().length > 0">
+    <thead><tr><th>Name</th><th>Description</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <ng-container *ngFor="let p of projects()">
+
+        <!-- Inline edit row -->
+        <tr *ngIf="editingId() === p.id">
+          <td colspan="4">
+            <form [formGroup]="form" (ngSubmit)="save()" class="grid-2" style="align-items: flex-end;">
+              <div class="field" style="margin-bottom: 0;">
+                <label>Name</label>
+                <input class="input" formControlName="name" />
+              </div>
+              <div class="field" style="margin-bottom: 0;">
+                <label>Description</label>
+                <input class="input" formControlName="description" />
+              </div>
+              <div class="row" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+                <button type="button" class="btn btn-text" (click)="cancelForm()">Cancel</button>
+              </div>
+            </form>
+          </td>
+        </tr>
+
+        <!-- Normal row -->
+        <tr *ngIf="editingId() !== p.id">
+          <td>{{ p.name }}</td>
+          <td>{{ p.description || '—' }}</td>
+          <td>{{ p.active ? 'Active' : 'Inactive' }}</td>
+          <td class="row">
+            <button class="btn btn-text" (click)="startEdit(p)">Edit</button>
+            <button class="btn btn-text" (click)="confirmDelete(p.id)" *ngIf="p.active">Deactivate</button>
+          </td>
+        </tr>
+      </ng-container>
+    </tbody>
+  </table>
+</section>
+
+<app-confirm-dialog
+  [open]="pendingDeleteId() !== null"
+  title="Deactivate this project?"
+  message="It will no longer be selectable for new reports, but existing reports that reference it are unaffected."
+  confirmLabel="Deactivate"
+  [danger]="true"
+  (confirm)="deleteConfirmed()"
+  (cancel)="cancelDelete()">
+</app-confirm-dialog>

@@ -1,0 +1,42 @@
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<ng-container *ngIf="!loading() && member() as m">
+  <div class="page-header">
+    <div>
+      <h1>{{ m.fullName }}</h1>
+      <p class="subtitle">{{ m.email }} · {{ m.active ? 'Active' : 'Inactive' }}</p>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom: 20px;">
+    <div class="card metric-card" style="border-left: 3px solid var(--color-status-approved);">
+      <div class="hint">Approved reports</div>
+      <div class="metric-value">{{ approvedCount() }}</div>
+    </div>
+    <div class="card metric-card" style="border-left: 3px solid var(--color-status-correction);">
+      <div class="hint">Needs correction</div>
+      <div class="metric-value">{{ needsCorrectionCount() }}</div>
+    </div>
+    <div class="card metric-card" style="border-left: 3px solid var(--color-danger);">
+      <div class="hint">Reports with open blockers</div>
+      <div class="metric-value">{{ openBlockerReports() }}</div>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Report history</h2>
+    <div class="empty-state" *ngIf="reports().length === 0">No reports submitted yet.</div>
+
+    <table class="ledger-table" *ngIf="reports().length > 0">
+      <thead><tr><th>Week of</th><th>Project</th><th>Status</th><th>Versions</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let r of reports()">
+          <td><a [routerLink]="targetFor(r)">{{ r.weekStartDate }}</a></td>
+          <td>{{ r.projectName }}</td>
+          <td><app-status-badge [status]="r.status"></app-status-badge></td>
+          <td>{{ r.versionCount }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</ng-container>

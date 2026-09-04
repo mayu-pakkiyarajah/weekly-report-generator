@@ -1,0 +1,119 @@
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<ng-container *ngIf="!loading() && report() as r">
+  <div class="page-header">
+    <div>
+      <h1>Week of {{ r.weekStartDate }}</h1>
+      <p class="subtitle">{{ r.userFullName }} · {{ r.projectName }}</p>
+    </div>
+    <app-status-badge [status]="r.status"></app-status-badge>
+  </div>
+
+  <div class="grid-2" style="align-items: flex-start;">
+    <div class="stack" *ngIf="viewingVersion() as v">
+
+      <div class="card" *ngIf="!isCurrentVersion(v)"
+           style="background: var(--color-status-draft-soft); border-color: var(--color-border-strong);">
+        Viewing an earlier version (v{{ v.versionNumber }}).
+        <button class="btn btn-text" (click)="viewVersion(r.currentVersion)" style="margin-left: 8px;">
+          Back to current version
+        </button>
+      </div>
+
+      <section class="card">
+        <h2>Tasks completed <span class="hint">— v{{ v.versionNumber }}</span></h2>
+        <div class="empty-state" *ngIf="v.tasksCompleted.length === 0">No tasks recorded.</div>
+        <table class="ledger-table" *ngIf="v.tasksCompleted.length > 0">
+          <thead>
+            <tr><th>Task</th><th>Priority</th><th>Status</th><th>Planned %</th><th>Actual %</th><th>Hrs planned</th><th>Hrs spent</th><th>Output</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let t of v.tasksCompleted">
+              <td>{{ t.taskName }}</td>
+              <td>{{ t.priority }}</td>
+              <td>{{ t.status.replace('_', ' ') }}</td>
+              <td>{{ t.plannedPercent }}%</td>
+              <td>{{ t.actualPercent }}%</td>
+              <td>{{ t.timePlannedHours }}</td>
+              <td>{{ t.timeSpentHours }}</td>
+              <td>{{ t.outputDeliverable || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Tasks planned for next week</h2>
+        <p>{{ v.tasksPlannedNextWeek || '—' }}</p>
+      </section>
+
+      <section class="card">
+        <h2>Blockers / challenges</h2>
+        <div class="empty-state" *ngIf="v.blockers.length === 0">No blockers reported.</div>
+        <ul *ngIf="v.blockers.length > 0">
+          <li *ngFor="let b of v.blockers">
+            {{ b.description }}
+            <strong *ngIf="b.keyIssue" style="color: var(--color-status-correction);">— key issue</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Achievements / highlights</h2>
+        <div class="empty-state" *ngIf="v.achievements.length === 0">No achievements added.</div>
+        <ul *ngIf="v.achievements.length > 0">
+          <li *ngFor="let a of v.achievements">
+            {{ a.description }}
+            <strong *ngIf="a.keyAchievement" style="color: var(--color-primary);">— key achievement</strong>
+          </li>
+        </ul>
+      </section>
+
+      <section class="card" *ngIf="totalHours(v) > 0">
+        <h2>Hours by task type</h2>
+        <div class="grid-4">
+          <div *ngFor="let h of v.hoursByTaskType">
+            <div class="hint">{{ h.taskType.replace('_', ' ') }}</div>
+            <div style="font-size: 18px; font-weight: 600;">{{ h.hours }}h</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" *ngIf="v.notes || v.links">
+        <h2>Notes &amp; links</h2>
+        <p *ngIf="v.notes">{{ v.notes }}</p>
+        <a *ngIf="v.links" [href]="v.links" target="_blank" rel="noopener">{{ v.links }}</a>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card" *ngIf="versions().length > 1">
+        <h2>Version history</h2>
+        <div class="stack" style="gap: 6px; margin-top: 10px;">
+          <button *ngFor="let v of versions()" type="button" class="btn"
+                  [class.btn-primary]="viewingVersion()?.versionNumber === v.versionNumber"
+                  style="justify-content: space-between;"
+                  (click)="viewVersion(v)">
+            <span>Version {{ v.versionNumber }}</span>
+            <span class="hint" *ngIf="v.submittedAt">{{ v.submittedAt | date:'short' }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card" *ngIf="r.reviewHistory.length > 0">
+        <h2>Review history</h2>
+        <div class="stack">
+          <div *ngFor="let c of r.reviewHistory">
+            <strong [style.color]="c.action === 'APPROVED' ? 'var(--color-status-approved)' : 'var(--color-status-correction)'">
+              {{ c.action === 'APPROVED' ? 'Approved' : 'Changes requested' }}
+            </strong>
+            &nbsp;on v{{ c.reviewedVersionNumber }} by {{ c.reviewerName }}
+            <p class="hint" style="margin-top: 2px;">{{ c.comment }}</p>
+          </div>
+        </div>
+      </section>
+
+      <a routerLink="/manager/reports" class="btn btn-text">&larr; Back to all reports</a>
+    </div>
+  </div>
+</ng-container>

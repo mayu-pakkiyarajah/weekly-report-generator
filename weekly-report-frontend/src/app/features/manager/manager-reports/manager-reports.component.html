@@ -1,0 +1,64 @@
+<div class="page-header">
+  <div>
+    <h1>All reports</h1>
+    <p class="subtitle">Search and filter reports across the whole team.</p>
+  </div>
+</div>
+
+<form [formGroup]="filterForm" (ngSubmit)="search()" class="card toolbar" style="align-items: flex-end;">
+  <div class="field" style="margin-bottom: 0;">
+    <label>Team member</label>
+    <select class="input" formControlName="memberId">
+      <option [ngValue]="null">All members</option>
+      <option *ngFor="let m of members()" [ngValue]="m.id">{{ m.fullName }}</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom: 0;">
+    <label>Project</label>
+    <select class="input" formControlName="projectId">
+      <option [ngValue]="null">All projects</option>
+      <option *ngFor="let p of projects()" [ngValue]="p.id">{{ p.name }}</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom: 0;">
+    <label>Status</label>
+    <select class="input" formControlName="status">
+      <option [ngValue]="null">Any status</option>
+      <option *ngFor="let s of statuses" [ngValue]="s">{{ s.replace('_', ' ') }}</option>
+    </select>
+  </div>
+  <div class="field" style="margin-bottom: 0;">
+    <label>Week from</label>
+    <input class="input" type="date" formControlName="weekStart" />
+  </div>
+  <div class="field" style="margin-bottom: 0;">
+    <label>Week to</label>
+    <input class="input" type="date" formControlName="weekEnd" />
+  </div>
+  <button type="submit" class="btn btn-primary">Filter</button>
+  <button type="button" class="btn btn-text" (click)="resetFilters()">Reset</button>
+</form>
+
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<section class="card" *ngIf="!loading()">
+  <div class="empty-state" *ngIf="reports().length === 0">No reports match these filters.</div>
+
+  <table class="ledger-table" *ngIf="reports().length > 0">
+    <thead>
+      <tr><th>Team member</th><th>Week of</th><th>Project</th><th>Status</th><th>Versions</th><th>Blockers</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let r of reports()">
+        <td><a [routerLink]="targetFor(r)">{{ r.userFullName }}</a></td>
+        <td>{{ r.weekStartDate }}</td>
+        <td>{{ r.projectName }}</td>
+        <td><app-status-badge [status]="r.status"></app-status-badge></td>
+        <td>{{ r.versionCount }}</td>
+        <td>{{ r.hasOpenBlockers ? 'Yes' : '—' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <app-pagination [page]="page()" [totalPages]="totalPages()" (pageChange)="onPageChange($event)"></app-pagination>
+</section>

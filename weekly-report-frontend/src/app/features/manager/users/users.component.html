@@ -1,0 +1,76 @@
+<div class="page-header">
+  <div>
+    <h1>Team members</h1>
+    <p class="subtitle">Invite team members, assign roles, and deactivate accounts.</p>
+  </div>
+  <button class="btn btn-primary" (click)="toggleInviteForm()">
+    {{ showInviteForm() ? 'Cancel' : '+ Invite team member' }}
+  </button>
+</div>
+
+<form [formGroup]="inviteForm" (ngSubmit)="invite()" class="card" style="margin-bottom: 20px;" *ngIf="showInviteForm()">
+  <h2>Invite a new account</h2>
+  <p class="hint">They'll sign in with this temporary password and can be asked to change it later.</p>
+
+  <div class="grid-2" style="margin-top: 12px;">
+    <div class="field">
+      <label for="fullName">Full name</label>
+      <input id="fullName" class="input" formControlName="fullName" />
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" class="input" type="email" formControlName="email" />
+    </div>
+    <div class="field">
+      <label for="temporaryPassword">Temporary password</label>
+      <input id="temporaryPassword" class="input" type="text" formControlName="temporaryPassword" />
+      <span class="hint">At least 8 characters.</span>
+    </div>
+    <div class="field">
+      <label for="role">Role</label>
+      <select id="role" class="input" formControlName="role">
+        <option *ngFor="let r of roles" [value]="r">{{ r === 'MANAGER' ? 'Manager' : 'Team member' }}</option>
+      </select>
+    </div>
+  </div>
+
+  <p class="error" *ngIf="errorMessage()">{{ errorMessage() }}</p>
+
+  <button type="submit" class="btn btn-primary" [disabled]="saving()">
+    {{ saving() ? 'Creating…' : 'Create account' }}
+  </button>
+</form>
+
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<section class="card" *ngIf="!loading()">
+  <table class="ledger-table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <tr *ngFor="let u of users()">
+        <td>{{ u.fullName }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <select class="input" style="width: auto;" [value]="u.role" (change)="changeRole(u, $any($event.target).value)">
+            <option *ngFor="let r of roles" [value]="r">{{ r === 'MANAGER' ? 'Manager' : 'Team member' }}</option>
+          </select>
+        </td>
+        <td>{{ u.active ? 'Active' : 'Inactive' }}</td>
+        <td>
+          <button class="btn btn-text" *ngIf="u.active" (click)="confirmDeactivate(u.id)">Deactivate</button>
+          <button class="btn btn-text" *ngIf="!u.active" (click)="reactivate(u)">Reactivate</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<app-confirm-dialog
+  [open]="pendingDeactivateId() !== null"
+  title="Deactivate this account?"
+  message="They will no longer be able to sign in. Their existing reports are kept."
+  confirmLabel="Deactivate"
+  [danger]="true"
+  (confirm)="deactivateConfirmed()"
+  (cancel)="cancelDeactivate()">
+</app-confirm-dialog>
