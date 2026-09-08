@@ -1,0 +1,28 @@
+# Root gitignore
+
+# Build outputs
+weekly-report-backend/target/
+weekly-report-frontend/dist/
+weekly-report-frontend/build/
+weekly-report-frontend/.angular/
+
+# Node modules
+node_modules/
+weekly-report-frontend/node_modules/
+
+# Logs & temporary files
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local

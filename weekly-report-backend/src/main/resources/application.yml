@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:weekly_report}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: Mayu@1999
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:Mayu@1999}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -20,6 +20,11 @@ spring:
         format_sql: true
         jdbc:
           time_zone: UTC
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+        query:
+          in_clause_parameter_padding: true
     show-sql: false
 
   flyway:

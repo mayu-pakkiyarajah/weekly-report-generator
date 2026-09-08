@@ -1,7 +1,8 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
 import { ReportService } from '../../../core/services/report.service';
@@ -36,6 +37,8 @@ function addDays(iso: string, days: number): string {
   styleUrl: './report-editor.component.scss'
 })
 export class ReportEditorComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly priorities = PRIORITIES;
   readonly taskStatuses = TASK_STATUSES;
   readonly taskTypes = TASK_TYPES;
@@ -48,6 +51,13 @@ export class ReportEditorComponent implements OnInit {
   saving = signal(false);
   submitError = signal<string | null>(null);
   saveConfirmation = signal<string | null>(null);
+
+  latestCorrectionComment = computed<string | null>(() => {
+    const r = this.report();
+    if (!r || r.status !== 'NEEDS_CORRECTION') return null;
+    const latest = r.reviewHistory?.find((c) => c.action === 'CHANGES_REQUESTED');
+    return latest?.comment ?? null;
+  });
 
   createForm: FormGroup = this.fb.group({
     weekStartDate: [toIso(mondayOf(new Date())), Validators.required],
@@ -83,10 +93,12 @@ export class ReportEditorComponent implements OnInit {
     this.reportId = idParam ? Number(idParam) : null;
 
     if (this.mode === 'create') {
-      this.projectService.listActive(0, 100).subscribe((page) => {
-        this.projects.set(page.content);
-        this.loading.set(false);
-      });
+      this.projectService.listActive(0, 100)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((page) => {
+          this.projects.set(page.content);
+          this.loading.set(false);
+        });
     } else {
       this.loadForEdit();
     }
@@ -96,7 +108,9 @@ export class ReportEditorComponent implements OnInit {
     forkJoin({
       report: this.reportService.getOwn(this.reportId!),
       projects: this.projectService.listActive(0, 100)
-    }).subscribe({
+    })
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({
       next: ({ report, projects }) => {
         this.projects.set(projects.content);
 
@@ -191,7 +205,9 @@ export class ReportEditorComponent implements OnInit {
       weekStartDate,
       weekEndDate: addDays(weekStartDate, 6),
       projectId
-    }).subscribe({
+    })
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({
       next: (report) => this.router.navigate(['/reports', report.id, 'edit']),
       error: (err) => {
         this.saving.set(false);
@@ -209,17 +225,19 @@ export class ReportEditorComponent implements OnInit {
     this.submitError.set(null);
     this.saveConfirmation.set(null);
 
-    this.reportService.updateContent(this.reportId!, this.buildContentPayload()).subscribe({
-      next: (report) => {
-        this.report.set(report);
-        this.saving.set(false);
-        this.saveConfirmation.set('Draft saved.');
-      },
-      error: (err) => {
-        this.saving.set(false);
-        this.submitError.set(err?.error?.message ?? 'Could not save the report.');
-      }
-    });
+    this.reportService.updateContent(this.reportId!, this.buildContentPayload())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (report) => {
+          this.report.set(report);
+          this.saving.set(false);
+          this.saveConfirmation.set('Draft saved.');
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.submitError.set(err?.error?.message ?? 'Could not save the report.');
+        }
+      });
   }
 
   submitForReview(): void {
@@ -231,27 +249,24 @@ export class ReportEditorComponent implements OnInit {
     this.saving.set(true);
     this.submitError.set(null);
 
-    this.reportService.updateContent(this.reportId!, this.buildContentPayload()).subscribe({
-      next: () => {
-        this.reportService.submit(this.reportId!).subscribe({
-          next: () => this.router.navigate(['/reports', this.reportId]),
-          error: (err) => {
-            this.saving.set(false);
-            this.submitError.set(err?.error?.message ?? 'Could not submit the report.');
-          }
-        });
-      },
-      error: (err) => {
-        this.saving.set(false);
-        this.submitError.set(err?.error?.message ?? 'Could not save the report before submitting.');
-      }
-    });
-  }
-
-  latestCorrectionComment(): string | null {
-    const r = this.report();
-    if (!r || r.status !== 'NEEDS_CORRECTION') return null;
-    const latest = r.reviewHistory.find((c) => c.action === 'CHANGES_REQUESTED');
-    return latest?.comment ?? null;
+    this.reportService.updateContent(this.reportId!, this.buildContentPayload())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reportService.submit(this.reportId!)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: () => this.router.navigate(['/reports', this.reportId]),
+              error: (err) => {
+                this.saving.set(false);
+                this.submitError.set(err?.error?.message ?? 'Could not submit the report.');
+              }
+            });
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.submitError.set(err?.error?.message ?? 'Could not save the report before submitting.');
+        }
+      });
   }
 }

@@ -24,10 +24,12 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
 
+    @Transactional(readOnly = true)
     public Page<UserResponse> listUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(userMapper::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getUser(Long id) {
         return userMapper.toResponse(findUserOrThrow(id));
     }

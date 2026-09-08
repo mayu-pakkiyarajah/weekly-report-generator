@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
 import { DashboardService } from '../../../core/services/dashboard.service';
@@ -30,6 +31,8 @@ const CHART_PALETTE = ['#2D5C4D', '#2D5C8A', '#B5462F', '#8A7A2D', '#5C4D8A', '#
   templateUrl: './team-dashboard.component.html'
 })
 export class TeamDashboardComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+
   weekStart = signal(toIso(mondayOf(new Date())));
   loading = signal(true);
 
@@ -44,6 +47,30 @@ export class TeamDashboardComponent implements OnInit {
   aiSummaryLoading = signal(false);
   aiSummaryError = signal<string | null>(null);
   aiUnavailable = signal(false);
+
+  // ---- Computed chart data memoization ----
+  workloadLabels = computed(() => this.workloadByProject().map((w) => w.projectName));
+  workloadHoursDataset = computed(() => [{
+    label: 'Hours',
+    data: this.workloadByProject().map((w) => w.totalHours),
+    backgroundColor: CHART_PALETTE[0]
+  }]);
+
+  timeByTypeLabels = computed(() => this.timeByTaskType().map((t) => t.taskType.replace('_', ' ')));
+  timeByTypeDataset = computed(() => [{
+    label: 'Hours',
+    data: this.timeByTaskType().map((t) => t.totalHours),
+    backgroundColor: this.timeByTaskType().map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length])
+  }]);
+
+  trendLabels = computed(() => this.tasksTrend().map((p) => p.weekStartDate));
+  trendDataset = computed(() => [{
+    label: 'Tasks completed',
+    data: this.tasksTrend().map((p) => p.tasksCompletedCount),
+    borderColor: CHART_PALETTE[0],
+    backgroundColor: 'transparent',
+    tension: 0.3
+  }]);
 
   constructor(
     private readonly dashboardService: DashboardService,
@@ -72,20 +99,22 @@ export class TeamDashboardComponent implements OnInit {
     this.aiSummaryLoading.set(true);
     this.aiSummaryError.set(null);
 
-    this.chatService.getWeeklySummary(this.weekStart()).subscribe({
-      next: (res) => {
-        this.aiSummary.set(res.summary);
-        this.aiSummaryLoading.set(false);
-      },
-      error: (err) => {
-        this.aiSummaryLoading.set(false);
-        if (err.status === 503) {
-          this.aiUnavailable.set(true);
-        } else {
-          this.aiSummaryError.set(err?.error?.message ?? 'Could not generate a summary right now.');
+    this.chatService.getWeeklySummary(this.weekStart())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.aiSummary.set(res.summary);
+          this.aiSummaryLoading.set(false);
+        },
+        error: (err) => {
+          this.aiSummaryLoading.set(false);
+          if (err.status === 503) {
+            this.aiUnavailable.set(true);
+          } else {
+            this.aiSummaryError.set(err?.error?.message ?? 'Could not generate a summary right now.');
+          }
         }
-      }
-    });
+      });
   }
 
   private load(): void {
@@ -97,7 +126,9 @@ export class TeamDashboardComponent implements OnInit {
       timeByTaskType: this.dashboardService.getTimeByTaskType(this.weekStart()),
       tasksTrend: this.dashboardService.getTasksCompletedTrend(8),
       activityFeed: this.dashboardService.getActivityFeed(10)
-    }).subscribe((res) => {
+    })
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe((res) => {
       this.summary.set(res.summary);
       this.statusByMember.set(res.statusByMember);
       this.workloadByProject.set(res.workloadByProject);
@@ -106,32 +137,5 @@ export class TeamDashboardComponent implements OnInit {
       this.activityFeed.set(res.activityFeed);
       this.loading.set(false);
     });
-  }
-
-  // ---- chart data getters ----
-
-  workloadLabels(): string[] { return this.workloadByProject().map((w) => w.projectName); }
-  workloadHoursDataset() {
-    return [{ label: 'Hours', data: this.workloadByProject().map((w) => w.totalHours), backgroundColor: CHART_PALETTE[0] }];
-  }
-
-  timeByTypeLabels(): string[] { return this.timeByTaskType().map((t) => t.taskType.replace('_', ' ')); }
-  timeByTypeDataset() {
-    return [{
-      label: 'Hours',
-      data: this.timeByTaskType().map((t) => t.totalHours),
-      backgroundColor: this.timeByTaskType().map((_, i) => CHART_PALETTE[i % CHART_PALETTE.length])
-    }];
-  }
-
-  trendLabels(): string[] { return this.tasksTrend().map((p) => p.weekStartDate); }
-  trendDataset() {
-    return [{
-      label: 'Tasks completed',
-      data: this.tasksTrend().map((p) => p.tasksCompletedCount),
-      borderColor: CHART_PALETTE[0],
-      backgroundColor: 'transparent',
-      tension: 0.3
-    }];
   }
 }

@@ -26,10 +26,12 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ProjectMapper projectMapper;
 
+    @Transactional(readOnly = true)
     public Page<ProjectResponse> listActiveProjects(Pageable pageable) {
         return projectRepository.findByActiveTrue(pageable).map(projectMapper::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public Page<ProjectResponse> listAllProjects(Pageable pageable) {
         return projectRepository.findAll(pageable).map(projectMapper::toResponse);
     }

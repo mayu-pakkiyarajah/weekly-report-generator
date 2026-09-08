@@ -116,22 +116,26 @@ public class ReportService {
         return reportMapper.toResponse(reportRepository.save(report));
     }
 
+    @Transactional(readOnly = true)
     public ReportResponse getOwnReport(Long userId, Long reportId) {
         Report report = findReportOrThrow(reportId);
         assertOwner(report, userId);
         return reportMapper.toResponse(report);
     }
 
+    @Transactional(readOnly = true)
     public Page<ReportSummaryResponse> listOwnReports(Long userId, Pageable pageable) {
         return reportRepository.findByUserId(userId, pageable).map(reportMapper::toSummary);
     }
 
     // ---------- Manager actions ----------
 
+    @Transactional(readOnly = true)
     public ReportResponse getReportForManager(Long reportId) {
         return reportMapper.toResponse(findReportOrThrow(reportId));
     }
 
+    @Transactional(readOnly = true)
     public Page<ReportSummaryResponse> searchTeamReports(Long memberId, Long projectId, ReportStatus status,
                                                           LocalDate weekStart, LocalDate weekEnd, Pageable pageable) {
         return reportRepository.search(memberId, projectId, status, weekStart, weekEnd, pageable)
@@ -166,6 +170,7 @@ public class ReportService {
         return reportMapper.toResponse(reportRepository.save(report));
     }
 
+    @Transactional(readOnly = true)
     public List<ReportVersionResponse> getVersionHistory(Long reportId) {
         // Managers only; enforced at the controller layer via @PreAuthorize.
         findReportOrThrow(reportId);

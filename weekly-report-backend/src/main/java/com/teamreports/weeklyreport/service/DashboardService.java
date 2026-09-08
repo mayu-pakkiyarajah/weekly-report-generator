@@ -10,7 +10,9 @@ import com.teamreports.weeklyreport.entity.enums.Role;
 import com.teamreports.weeklyreport.entity.enums.TaskStatus;
 import com.teamreports.weeklyreport.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -24,6 +26,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DashboardService {
 
     private final ReportRepository reportRepository;
@@ -35,9 +38,7 @@ public class DashboardService {
     private final AchievementRepository achievementRepository;
 
     public DashboardSummaryResponse getSummary(LocalDate weekStart) {
-        long expected = userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.TEAM_MEMBER && u.isActive())
-                .count();
+        long expected = userRepository.countByRoleAndActiveTrue(Role.TEAM_MEMBER);
 
         List<Report> weekReports = reportRepository.findByWeekStartDate(weekStart);
 
@@ -67,8 +68,7 @@ public class DashboardService {
         Map<Long, Report> reportsByUser = reportRepository.findByWeekStartDate(weekStart).stream()
                 .collect(Collectors.toMap(r -> r.getUser().getId(), r -> r));
 
-        return userRepository.findAll().stream()
-                .filter(u -> u.getRole() == Role.TEAM_MEMBER && u.isActive())
+        return userRepository.findByRoleAndActiveTrue(Role.TEAM_MEMBER).stream()
                 .map(u -> {
                     Report report = reportsByUser.get(u.getId());
                     ReportStatus status = report != null ? report.getStatus() : null;
@@ -93,9 +93,8 @@ public class DashboardService {
     }
 
     public List<ActivityFeedItemResponse> getActivityFeed(int limit) {
-        return reviewCommentRepository.findAll().stream()
-                .sorted(Comparator.comparing((ReviewComment c) -> c.getCreatedAt()).reversed())
-                .limit(limit)
+        return reviewCommentRepository.findLatestComments(PageRequest.of(0, limit))
+                .getContent().stream()
                 .map(c -> new ActivityFeedItemResponse(
                         c.getAction().name(),
                         c.getReport().getId(),
@@ -109,21 +108,27 @@ public class DashboardService {
 
     /** Bonus: one section across the whole team for a given week, side by side. */
     public List<SectionAcrossTeamResponse> getBlockersAcrossTeam(LocalDate weekStart) {
-        Map<Long, List<Blocker>> byUser = blockerRepository.findAllForWeek(weekStart).stream()
+        List<Blocker> blockers = blockerRepository.findAllForWeek(weekStart);
+        Map<Long, List<Blocker>> byUser = blockers.stream()
                 .collect(Collectors.groupingBy(b -> b.getReportVersion().getReport().getUser().getId()));
 
-        return toSectionResponse(byUser, blockerRepository.findAllForWeek(weekStart).stream()
+        List<com.teamreports.weeklyreport.entity.User> users = blockers.stream()
                 .map(b -> b.getReportVersion().getReport().getUser())
-                .distinct().toList(), Blocker::getDescription);
+                .distinct().toList();
+
+        return toSectionResponse(byUser, users, Blocker::getDescription);
     }
 
     public List<SectionAcrossTeamResponse> getAchievementsAcrossTeam(LocalDate weekStart) {
-        Map<Long, List<Achievement>> byUser = achievementRepository.findAllForWeek(weekStart).stream()
+        List<Achievement> achievements = achievementRepository.findAllForWeek(weekStart);
+        Map<Long, List<Achievement>> byUser = achievements.stream()
                 .collect(Collectors.groupingBy(a -> a.getReportVersion().getReport().getUser().getId()));
 
-        return toSectionResponse(byUser, achievementRepository.findAllForWeek(weekStart).stream()
+        List<com.teamreports.weeklyreport.entity.User> users = achievements.stream()
                 .map(a -> a.getReportVersion().getReport().getUser())
-                .distinct().toList(), Achievement::getDescription);
+                .distinct().toList();
+
+        return toSectionResponse(byUser, users, Achievement::getDescription);
     }
 
     private <T> List<SectionAcrossTeamResponse> toSectionResponse(
