@@ -74,6 +74,26 @@
     <app-chart type="line" [labels]="trendLabels()" [datasets]="trendDataset()"></app-chart>
   </section>
 
+  <!-- AI-generated summary (optional feature) -->
+  <section class="card">
+    <div class="row" style="justify-content: space-between;">
+      <div>
+        <h2>AI team summary</h2>
+        <p class="hint">Completed work, recurring blockers, and workload balance for this week.</p>
+      </div>
+      <button class="btn" [disabled]="aiSummaryLoading()" (click)="generateAiSummary()">
+        {{ aiSummaryLoading() ? 'Generating…' : (aiSummary() ? 'Regenerate' : 'Generate summary') }}
+      </button>
+    </div>
+
+    <div class="card" *ngIf="aiUnavailable()" style="background: var(--color-status-draft-soft); margin-top: 12px;">
+      The AI assistant isn't configured for this environment. Ask an administrator to
+      enable <code>AI_ASSISTANT_ENABLED</code> and set an API key.
+    </div>
+    <p class="error" *ngIf="aiSummaryError()">{{ aiSummaryError() }}</p>
+    <p *ngIf="aiSummary()" style="white-space: pre-wrap; margin-top: 12px;">{{ aiSummary() }}</p>
+  </section>
+
   <!-- Activity feed -->
   <section class="card">
     <h2>Recent activity</h2>

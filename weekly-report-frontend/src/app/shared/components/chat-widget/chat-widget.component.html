@@ -1,0 +1,40 @@
+<button type="button" class="fab" (click)="toggle()" [attr.aria-expanded]="open()" aria-label="Team assistant">
+  <span *ngIf="!open()">Ask about the team</span>
+  <span *ngIf="open()">Close</span>
+</button>
+
+<div class="panel card" *ngIf="open()">
+  <div class="panel-header">
+    <strong>Team assistant</strong>
+    <p class="hint">Ask about what the team has been working on, blockers, or anyone's recent reports.</p>
+  </div>
+
+  <div class="panel-body">
+    <div class="empty-state" *ngIf="turns().length === 0 && !unavailable()">
+      Try: "What did the team work on last week?" or "What has Carol been working on?"
+    </div>
+
+    <div class="card" *ngIf="unavailable()" style="background: var(--color-status-draft-soft);">
+      The assistant isn't configured for this environment yet. Ask an administrator to
+      enable <code>AI_ASSISTANT_ENABLED</code> and set an API key.
+    </div>
+
+    <div class="turn" *ngFor="let t of turns()" [class.turn-user]="t.role === 'user'">
+      <div class="turn-label">{{ t.role === 'user' ? 'You' : 'Assistant' }}</div>
+      <div class="turn-text">{{ t.text }}</div>
+    </div>
+
+    <div class="turn" *ngIf="asking()">
+      <div class="turn-label">Assistant</div>
+      <div class="turn-text hint">Thinking…</div>
+    </div>
+
+    <p class="error" *ngIf="errorMessage()">{{ errorMessage() }}</p>
+  </div>
+
+  <form class="panel-footer" (ngSubmit)="ask()" *ngIf="!unavailable()">
+    <input class="input" [(ngModel)]="question" name="question"
+           placeholder="Ask a question about the team's reports..." [disabled]="asking()" />
+    <button type="submit" class="btn btn-primary" [disabled]="asking() || !question.trim()">Ask</button>
+  </form>
+</div>

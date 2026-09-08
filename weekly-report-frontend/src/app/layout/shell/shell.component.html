@@ -28,4 +28,6 @@
   <main class="content">
     <router-outlet></router-outlet>
   </main>
+
+  <app-chat-widget *ngIf="auth.isManager()"></app-chat-widget>
 </div>

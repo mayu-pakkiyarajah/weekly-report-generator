@@ -20,11 +20,7 @@ export class LoginComponent {
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
-  constructor(
-    private readonly fb: FormBuilder,
-    private readonly auth: AuthService,
-    private readonly router: Router,
-  ) {}
+  constructor(private readonly fb: FormBuilder, private readonly auth: AuthService, private readonly router: Router) {}
 
   submit(): void {
     if (this.form.invalid) {

@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
 import { DashboardService } from '../../../core/services/dashboard.service';
+import { ChatService } from '../../../core/services/chat.service';
 import {
   ActivityFeedItemResponse, DashboardSummaryResponse, StatusByMemberResponse,
   TasksTrendPointResponse, TimeByTaskTypeResponse, WorkloadByProjectResponse
@@ -39,12 +40,22 @@ export class TeamDashboardComponent implements OnInit {
   tasksTrend = signal<TasksTrendPointResponse[]>([]);
   activityFeed = signal<ActivityFeedItemResponse[]>([]);
 
-  constructor(private readonly dashboardService: DashboardService) {}
+  aiSummary = signal<string | null>(null);
+  aiSummaryLoading = signal(false);
+  aiSummaryError = signal<string | null>(null);
+  aiUnavailable = signal(false);
+
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly chatService: ChatService
+  ) {}
 
   ngOnInit(): void { this.load(); }
 
   onWeekChange(value: string): void {
     this.weekStart.set(value);
+    this.aiSummary.set(null);
+    this.aiUnavailable.set(false);
     this.load();
   }
 
@@ -52,7 +63,29 @@ export class TeamDashboardComponent implements OnInit {
     const d = new Date(this.weekStart() + 'T00:00:00');
     d.setDate(d.getDate() + days);
     this.weekStart.set(toIso(d));
+    this.aiSummary.set(null);
+    this.aiUnavailable.set(false);
     this.load();
+  }
+
+  generateAiSummary(): void {
+    this.aiSummaryLoading.set(true);
+    this.aiSummaryError.set(null);
+
+    this.chatService.getWeeklySummary(this.weekStart()).subscribe({
+      next: (res) => {
+        this.aiSummary.set(res.summary);
+        this.aiSummaryLoading.set(false);
+      },
+      error: (err) => {
+        this.aiSummaryLoading.set(false);
+        if (err.status === 503) {
+          this.aiUnavailable.set(true);
+        } else {
+          this.aiSummaryError.set(err?.error?.message ?? 'Could not generate a summary right now.');
+        }
+      }
+    });
   }
 
   private load(): void {

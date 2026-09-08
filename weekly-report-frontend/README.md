@@ -80,6 +80,19 @@ src/app/
 | Projects | `/manager/projects` | Full CRUD list page (not a modal) |
 | Team members (admin) | `/manager/users` | Invite, assign roles, deactivate/reactivate |
 
+## 8. AI chat assistant (optional)
+
+When the backend has the AI assistant enabled (see the backend README), managers get:
+
+- A floating **"Ask about the team"** chat widget (bottom-right, on every manager page) for
+  conversational Q&A — e.g. *"What did the team work on last week?"*, *"What has Carol been
+  working on?"*
+- A **"Generate summary"** button on the team dashboard that produces an AI-written
+  summary of completed work, recurring blockers, and workload balance for the selected week.
+
+If the backend feature is off, both surfaces show a plain, honest "not configured" message
+instead of a broken request — the rest of the app works identically either way.
+
 ## 8. Design notes
 
 The visual identity ("ledger") treats the app as a status board, since the product
