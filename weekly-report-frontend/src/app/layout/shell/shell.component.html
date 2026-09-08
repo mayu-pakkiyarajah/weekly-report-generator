@@ -26,6 +26,12 @@
   </aside>
 
   <main class="content">
+    <div class="content-header">
+      <button class="btn btn-text theme-toggle" (click)="toggleTheme()" [title]="'Switch to ' + (currentTheme$ | async) === 'light' ? 'dark' : 'light' + ' theme'">
+        <span *ngIf="(currentTheme$ | async) === 'light'">🌙</span>
+        <span *ngIf="(currentTheme$ | async) === 'dark'">☀️</span>
+      </button>
+    </div>
     <router-outlet></router-outlet>
   </main>
 

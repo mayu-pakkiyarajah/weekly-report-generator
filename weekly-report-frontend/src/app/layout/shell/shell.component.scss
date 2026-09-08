@@ -75,6 +75,22 @@
   flex: 1;
   padding: 28px 36px;
   max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 28px;
+}
+
+.theme-toggle {
+  padding: 8px 10px;
+  font-size: 18px;
+  line-height: 1;
+  min-width: 44px;
+  justify-content: center;
 }
 
 @media (max-width: 760px) {
@@ -82,3 +98,4 @@
   .sidebar { width: 100%; flex-direction: row; align-items: center; overflow-x: auto; }
   .content { padding: 20px; }
 }
+
