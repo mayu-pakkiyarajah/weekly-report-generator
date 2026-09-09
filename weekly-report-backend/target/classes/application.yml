@@ -39,6 +39,15 @@ app:
     deadline-hour: ${SUBMISSION_DEADLINE_HOUR:18}
   seed:
     enabled: ${SEED_DEMO_DATA:false}
+  ai:
+    # Optional AI chat assistant (assignment section 8, "good to have"). Disabled unless
+    # an API key is supplied - the app runs perfectly well with this entirely off.
+    enabled: ${AI_ASSISTANT_ENABLED:false}
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${AI_MODEL:claude-sonnet-5}
+    api-base-url: ${AI_API_BASE_URL:https://api.anthropic.com}
+    max-tool-iterations: ${AI_MAX_TOOL_ITERATIONS:4}
+    max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:1024}
 
 springdoc:
   swagger-ui:
