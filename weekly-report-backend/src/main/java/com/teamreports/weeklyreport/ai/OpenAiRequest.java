@@ -6,11 +6,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record AnthropicRequest(
+public record OpenAiRequest(
         String model,
-        @JsonProperty("max_tokens") int maxTokens,
-        String system,
-        List<AnthropicMessage> messages,
-        List<AnthropicTool> tools
+        List<OpenAiMessage> messages,
+        List<OpenAiTool> tools,
+        @JsonProperty("tool_choice") String toolChoice,
+        @JsonProperty("max_tokens") Integer maxTokens
 ) {
 }

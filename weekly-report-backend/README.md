@@ -132,3 +132,62 @@ src/main/java/com/teamreports/weeklyreport/
   seed/         # Optional demo data seeder
   service/      # Business logic
 ```
+
+
+## 8. AI chat assistant (optional, "Good to have")
+
+Disabled by default — the app runs perfectly well with this entirely off. When enabled,
+it gives managers a conversational Q&A endpoint and an AI-generated weekly team summary,
+backed by **OpenAI's Chat Completions API**.
+
+### How it works
+
+Rather than stuffing every report into one giant prompt, the model is given two narrow,
+read-only **tools** (OpenAI "functions") and decides for itself which to call — real tool
+use / function calling, not a fixed RAG blob:
+
+- **`get_week_snapshot(weekStartDate)`** — every team member's report content for one
+  specific week. Backs questions like *"What did the team work on last week?"* or
+  *"Who has open blockers this week?"*
+- **`get_member_history(memberName, weeksBack)`** — one team member's reports over their
+  last N weeks. Backs questions like *"What has Priya been working on?"*
+
+`AiChatService` runs a small, bounded loop (`AI_MAX_TOOL_ITERATIONS`, default 4): send the
+conversation to the model → if it responds with `finish_reason: "tool_calls"`, run the
+requested tool(s) against the real database via `ReportQueryTools`, append the JSON
+result(s) back as `role: "tool"` messages → repeat until the model returns plain text. The
+weekly team summary (`GET /summary`) reuses the exact same loop with a prompt that
+instructs the model to call `get_week_snapshot` for the requested week and then write a
+three-part summary (completed work / recurring blockers / workload balance).
+
+One OpenAI-specific detail worth knowing if this comes up in the live coding round: a
+tool call's arguments arrive as a **JSON-encoded string**, not a JSON object (unlike some
+other providers) — `AiChatService.parseArguments()` handles that explicitly before the
+arguments are used.
+
+### Data privacy
+
+- `ReportQueryTools` only ever reads data a manager can already see through the normal
+  dashboard and report screens — team member names, project names, and report content.
+  Password hashes, other managers' notes, or anything outside that surface are never
+  assembled into a prompt.
+- Nothing is persisted by the chat feature itself; each request is stateless.
+- Enabling this feature sends report content to OpenAI's API over the network. Only
+  enable it in environments where that's acceptable, and only with a key you control.
+
+### Enabling it
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AI_ASSISTANT_ENABLED` | `false` | Master on/off switch |
+| `OPENAI_API_KEY` | *(none)* | Required to actually enable the feature |
+| `AI_MODEL` | `gpt-4o-mini` | Model name sent to the OpenAI API |
+| `AI_API_BASE_URL` | `https://api.openai.com` | Override for testing against a proxy |
+| `AI_MAX_TOOL_ITERATIONS` | `4` | Safety cap on the tool-use loop |
+| `AI_MAX_OUTPUT_TOKENS` | `1024` | Max tokens per model response |
+
+If the feature is called while disabled or misconfigured, both endpoints return
+`503 Service Unavailable` with a clear message rather than a stack trace. An upstream
+OpenAI API failure (bad key, no credits, etc.) returns `502 Bad Gateway`, and the real
+error detail is logged server-side rather than shown to the client.
+```

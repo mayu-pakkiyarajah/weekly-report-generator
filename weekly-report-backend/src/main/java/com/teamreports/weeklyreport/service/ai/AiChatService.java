@@ -1,11 +1,11 @@
 package com.teamreports.weeklyreport.service.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.teamreports.weeklyreport.ai.AnthropicClient;
-import com.teamreports.weeklyreport.ai.AnthropicMessage;
-import com.teamreports.weeklyreport.ai.AnthropicRequest;
-import com.teamreports.weeklyreport.ai.AnthropicResponse;
-import com.teamreports.weeklyreport.ai.AnthropicTool;
+import com.teamreports.weeklyreport.ai.OpenAiClient;
+import com.teamreports.weeklyreport.ai.OpenAiMessage;
+import com.teamreports.weeklyreport.ai.OpenAiRequest;
+import com.teamreports.weeklyreport.ai.OpenAiResponse;
+import com.teamreports.weeklyreport.ai.OpenAiTool;
 import com.teamreports.weeklyreport.config.AiProperties;
 import com.teamreports.weeklyreport.exception.AiServiceException;
 import com.teamreports.weeklyreport.exception.AiUnavailableException;
@@ -18,21 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Conversational assistant for managers (assignment section 8, "Good to have").
- *
- * Design: rather than dumping the whole team's report history into the prompt (expensive,
- * and an easy way to leak more than the question needs), the model is given two narrow
- * read-only tools backed by {@link ReportQueryTools} and decides for itself which one(s)
- * to call to answer a given question - genuine tool use / function calling, not a fixed
- * RAG blob. The loop below is intentionally small and bounded (max-tool-iterations) so a
- * confused model can't spin forever.
- *
- * Data-privacy: only report content a manager can already see in the dashboard is ever
- * placed in a prompt (see the note on {@link ReportQueryTools}). No data is persisted by
- * this service beyond the lifetime of a single request; nothing is sent anywhere except
- * to the configured Anthropic endpoint.
- */
+// After fixing with OpenAI api
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,7 +28,7 @@ public class AiChatService {
     private static final String WEEK_SNAPSHOT_TOOL = "get_week_snapshot";
     private static final String MEMBER_HISTORY_TOOL = "get_member_history";
 
-    private final AnthropicClient anthropicClient;
+    private final OpenAiClient openAiClient;
     private final AiProperties aiProperties;
     private final ReportQueryTools reportQueryTools;
     private final ObjectMapper objectMapper;
@@ -52,20 +39,26 @@ public class AiChatService {
                     "The AI assistant is not configured. Ask an administrator to enable it.");
         }
 
-        List<AnthropicMessage> messages = new ArrayList<>();
-        messages.add(AnthropicMessage.user(question));
+        List<OpenAiMessage> messages = new ArrayList<>();
+        messages.add(OpenAiMessage.system(systemPrompt()));
+        messages.add(OpenAiMessage.user(question));
 
         for (int iteration = 0; iteration < aiProperties.maxToolIterations(); iteration++) {
-            AnthropicResponse response = anthropicClient.createMessage(new AnthropicRequest(
-                    aiProperties.model(), aiProperties.maxOutputTokens(), systemPrompt(), messages, tools()));
+            OpenAiResponse response = openAiClient.createChatCompletion(new OpenAiRequest(
+                    aiProperties.model(), messages, tools(), "auto", aiProperties.maxOutputTokens()));
 
-            if (!"tool_use".equals(response.stopReason())) {
-                return extractText(response);
+            OpenAiResponse.Choice choice = firstChoice(response);
+
+            if (!"tool_calls".equals(choice.finishReason())) {
+                return extractText(choice);
             }
 
             // The assistant asked to call one or more tools: run them and feed the results back.
-            messages.add(new AnthropicMessage("assistant", response.content()));
-            messages.add(new AnthropicMessage("user", executeToolCalls(response.content())));
+            List<Map<String, Object>> toolCalls = choice.message().toolCalls();
+            messages.add(OpenAiMessage.assistantWithToolCalls(choice.message().content(), toolCalls));
+            for (OpenAiMessage toolResult : executeToolCalls(toolCalls)) {
+                messages.add(toolResult);
+            }
         }
 
         throw new AiServiceException("The assistant needed too many steps to answer this question.");
@@ -91,9 +84,9 @@ public class AiChatService {
                 + "referencing team member and project names from the tool results.";
     }
 
-    private List<AnthropicTool> tools() {
+    private List<OpenAiTool> tools() {
         return List.of(
-                new AnthropicTool(WEEK_SNAPSHOT_TOOL,
+                OpenAiTool.function(WEEK_SNAPSHOT_TOOL,
                         "Get every team member's report content for one specific week - use this for "
                                 + "'what did the team work on' / 'who has blockers' style questions.",
                         Map.of(
@@ -103,7 +96,7 @@ public class AiChatService {
                                                 "type", "string",
                                                 "description", "Monday of the target week, format yyyy-MM-dd")),
                                 "required", List.of("weekStartDate"))),
-                new AnthropicTool(MEMBER_HISTORY_TOOL,
+                OpenAiTool.function(MEMBER_HISTORY_TOOL,
                         "Get one team member's reports over their last N weeks - use this for "
                                 + "'what has <person> been working on' style questions.",
                         Map.of(
@@ -120,25 +113,35 @@ public class AiChatService {
 
     // ---------- tool execution ----------
 
-    @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> executeToolCalls(List<Map<String, Object>> assistantContent) {
-        List<Map<String, Object>> results = new ArrayList<>();
+    private List<OpenAiMessage> executeToolCalls(List<Map<String, Object>> toolCalls) {
+        List<OpenAiMessage> results = new ArrayList<>();
 
-        for (Map<String, Object> block : assistantContent) {
-            if (!"tool_use".equals(block.get("type"))) {
-                continue;
-            }
-            String toolUseId = (String) block.get("id");
-            String toolName = (String) block.get("name");
-            Map<String, Object> input = (Map<String, Object>) block.getOrDefault("input", Map.of());
+        for (Map<String, Object> call : toolCalls) {
+            String callId = (String) call.get("id");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> function = (Map<String, Object>) call.get("function");
+            String toolName = (String) function.get("name");
+            String argumentsJson = (String) function.get("arguments");
 
+            Map<String, Object> input = parseArguments(argumentsJson);
             Object toolResult = runTool(toolName, input);
-            results.add(Map.of(
-                    "type", "tool_result",
-                    "tool_use_id", toolUseId,
-                    "content", toJson(toolResult)));
+            results.add(OpenAiMessage.toolResult(callId, toJson(toolResult)));
         }
         return results;
+    }
+
+    private Map<String, Object> parseArguments(String argumentsJson) {
+        if (argumentsJson == null || argumentsJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = objectMapper.readValue(argumentsJson, Map.class);
+            return parsed;
+        } catch (Exception ex) {
+            log.warn("Could not parse tool call arguments '{}': {}", argumentsJson, ex.getMessage());
+            return Map.of();
+        }
     }
 
     private Object runTool(String toolName, Map<String, Object> input) {
@@ -165,17 +168,18 @@ public class AiChatService {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private String extractText(AnthropicResponse response) {
-        StringBuilder sb = new StringBuilder();
-        for (Map<String, Object> block : response.content()) {
-            if ("text".equals(block.get("type"))) {
-                sb.append((String) block.get("text"));
-            }
-        }
-        if (sb.isEmpty()) {
+    private OpenAiResponse.Choice firstChoice(OpenAiResponse response) {
+        if (response == null || response.choices() == null || response.choices().isEmpty()) {
             throw new AiServiceException("The assistant returned an empty response.");
         }
-        return sb.toString();
+        return response.choices().get(0);
+    }
+
+    private String extractText(OpenAiResponse.Choice choice) {
+        String content = choice.message().content();
+        if (content == null || content.isBlank()) {
+            throw new AiServiceException("The assistant returned an empty response.");
+        }
+        return content;
     }
 }

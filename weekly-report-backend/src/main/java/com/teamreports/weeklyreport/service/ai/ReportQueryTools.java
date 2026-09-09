@@ -8,21 +8,15 @@ import com.teamreports.weeklyreport.repository.ReportRepository;
 import com.teamreports.weeklyreport.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * The concrete data functions exposed to the AI assistant as "tools".
- *
- * Data-privacy note: every method here only reads data a manager can already see
- * through the normal dashboard/report screens (team members, projects, report content).
- * Nothing outside that surface - no password hashes, no other manager's private notes,
- * no data belonging to a different organization - is ever assembled for the model.
- */
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ReportQueryTools {
 
     private final ReportRepository reportRepository;
